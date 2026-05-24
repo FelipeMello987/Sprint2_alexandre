@@ -25,7 +25,6 @@ O sistema monitora o consumo total em tempo real. Quando a demanda ultrapassa 18
 ## 🚀 Instruções de Uso
 Acesse o protótipo funcional diretamente pelo navegador, sem instalar nada:
 🔗 **https://felipemello987.github.io/Sprint2_alexandre/**  
-
 O dashboard roda inteiramente no navegador e simula dados em tempo real, demonstrando os 4 pilares da solução.
 ---
 ## 🛠️ Materiais Técnicos
