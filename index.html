@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChargeGrid Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #111827;
+    --bg3: #1a2235;
+    --border: rgba(99,179,237,0.15);
+    --accent: #63b3ed;
+    --accent2: #38ef7d;
+    --accent3: #f6c90e;
+    --danger: #fc8181;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --card-bg: rgba(26,34,53,0.8);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    top: -40%;
+    left: -20%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(99,179,237,0.06) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -30%;
+    right: -10%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(56,239,125,0.05) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.25rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,14,26,0.95);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo-icon {
+    width: 36px;
+    height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+  .logo-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .logo-sub {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--accent2);
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent2);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+  #clock {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* LAYOUT */
+  main {
+    padding: 1.5rem 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* SECTION TITLES */
+  .section-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.75rem;
+    padding-left: 2px;
+  }
+
+  /* METRIC CARDS */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+  .metric-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .metric-card:hover { border-color: rgba(99,179,237,0.35); }
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    opacity: 0.6;
+  }
+  .metric-card.green::before { background: linear-gradient(90deg, var(--accent2), transparent); }
+  .metric-card.yellow::before { background: linear-gradient(90deg, var(--accent3), transparent); }
+  .metric-card.red::before { background: linear-gradient(90deg, var(--danger), transparent); }
+  .metric-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+  }
+  .metric-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .metric-sub {
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .metric-delta {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .delta-up { background: rgba(56,239,125,0.12); color: var(--accent2); }
+  .delta-down { background: rgba(252,129,129,0.12); color: var(--danger); }
+
+  /* MAIN GRID */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: border-color 0.3s;
+  }
+  .card:hover { border-color: rgba(99,179,237,0.3); }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  .icon-blue { background: rgba(99,179,237,0.15); }
+  .icon-green { background: rgba(56,239,125,0.15); }
+  .icon-yellow { background: rgba(246,201,14,0.15); }
+  .icon-red { background: rgba(252,129,129,0.15); }
+  .badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+  }
+  .badge-blue { background: rgba(99,179,237,0.12); color: var(--accent); border: 1px solid rgba(99,179,237,0.2); }
+  .badge-green { background: rgba(56,239,125,0.12); color: var(--accent2); border: 1px solid rgba(56,239,125,0.2); }
+  .badge-yellow { background: rgba(246,201,14,0.12); color: var(--accent3); border: 1px solid rgba(246,201,14,0.2); }
+  .badge-red { background: rgba(252,129,129,0.12); color: var(--danger); border: 1px solid rgba(252,129,129,0.2); }
+
+  /* CHARGER LIST */
+  .charger-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .charger-item:last-child { border-bottom: none; }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .dot-charging { background: var(--accent2); box-shadow: 0 0 6px rgba(56,239,125,0.5); }
+  .dot-available { background: var(--accent); }
+  .dot-throttled { background: var(--accent3); }
+  .dot-fault { background: var(--danger); }
+  .charger-id {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+    min-width: 48px;
+  }
+  .charger-model { color: var(--muted); flex: 1; font-size: 12px; }
+  .charger-kw {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    min-width: 44px;
+    text-align: right;
+  }
+  .charger-status { font-size: 11px; min-width: 64px; text-align: right; }
+  .status-charging { color: var(--accent2); }
+  .status-available { color: var(--accent); }
+  .status-throttled { color: var(--accent3); }
+  .status-fault { color: var(--danger); }
+
+  /* PROGRESS BAR */
+  .progress-wrap { margin-bottom: 1rem; }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 5px;
+  }
+  .progress-val { font-family: 'Space Mono', monospace; color: var(--text); }
+  .progress-bar {
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1s ease;
+  }
+  .fill-blue { background: linear-gradient(90deg, var(--accent), rgba(99,179,237,0.5)); }
+  .fill-green { background: linear-gradient(90deg, var(--accent2), rgba(56,239,125,0.5)); }
+  .fill-yellow { background: linear-gradient(90deg, var(--accent3), rgba(246,201,14,0.5)); }
+  .fill-red { background: linear-gradient(90deg, var(--danger), rgba(252,129,129,0.5)); }
+
+  /* AI LOG */
+  .ai-entry {
+    display: flex;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    margin-bottom: 6px;
+    font-size: 12px;
+    animation: fadeIn 0.4s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  .ai-time {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    white-space: nowrap;
+    margin-top: 1px;
+  }
+  .ai-msg { color: var(--text); line-height: 1.5; }
+
+  /* TRANSACTIONS */
+  .tx-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    animation: fadeIn 0.4s ease;
+  }
+  .tx-item:last-child { border-bottom: none; }
+  .tx-id {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+  }
+  .tx-detail { color: var(--muted); font-size: 11px; }
+  .tx-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    color: var(--accent2);
+    font-weight: 700;
+    text-align: right;
+  }
+  .tx-method { font-size: 10px; color: var(--muted); text-align: right; }
+
+  /* PROTOCOLS */
+  .proto-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .proto-item:last-child { border-bottom: none; }
+  .proto-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+    flex: 1;
+  }
+  .proto-devices { color: var(--muted); font-size: 11px; }
+
+  /* DEMAND CHART */
+  .chart-legend {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 10px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .legend-line {
+    width: 16px;
+    height: 2px;
+    border-radius: 1px;
+  }
+
+  /* DEMAND RING */
+  .demand-ring-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 0;
+  }
+  .ring-container {
+    position: relative;
+    width: 130px;
+    height: 130px;
+    margin-bottom: 12px;
+  }
+  .ring-svg { transform: rotate(-90deg); }
+  .ring-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .ring-pct {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+  }
+  .ring-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .demand-bars { width: 100%; }
+  .dbar-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 11px;
+  }
+  .dbar-label { color: var(--muted); min-width: 28px; }
+  .dbar-track {
+    flex: 1;
+    height: 5px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .dbar-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+  .dbar-val {
+    font-family: 'Space Mono', monospace;
+    color: var(--text);
+    min-width: 36px;
+    text-align: right;
+  }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 1.5rem;
+    font-size: 11px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.5px;
+    position: relative;
+    z-index: 1;
+  }
+
+  @media (max-width: 900px) {
+    .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+    .main-grid { grid-template-columns: 1fr; }
+    .bottom-grid { grid-template-columns: 1fr; }
+    main { padding: 1rem; }
+    header { padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div class="logo-text">ChargeGrid</div>
+      <div class="logo-sub">Intelligence Dashboard</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      Ao vivo
+    </div>
+    <div id="clock">--:--:--</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- MÉTRICAS PRINCIPAIS -->
+  <div class="section-title">Visão geral do sistema</div>
+  <div class="metrics-grid">
+    <div class="metric-card blue">
+      <div class="metric-label">Potência total ativa</div>
+      <div class="metric-value" id="m-kw">148 kW</div>
+      <div class="metric-sub">
+        de 200 kW disponíveis
+        <span class="metric-delta delta-up" id="m-kw-delta">▲ 4%</span>
+      </div>
+    </div>
+    <div class="metric-card green">
+      <div class="metric-label">Carregadores ativos</div>
+      <div class="metric-value" id="m-active">6 / 8</div>
+      <div class="metric-sub">2 disponíveis para novos veículos</div>
+    </div>
+    <div class="metric-card yellow">
+      <div class="metric-label">Receita hoje</div>
+      <div class="metric-value" id="m-rev">R$ 312</div>
+      <div class="metric-sub">
+        32 sessões concluídas
+        <span class="metric-delta delta-up">▲ 12%</span>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Tarifa atual (IA)</div>
+      <div class="metric-value" id="m-tariff">R$1,85</div>
+      <div class="metric-sub">por kWh · horário de pico</div>
+    </div>
+  </div>
+
+  <!-- GRÁFICO + CARREGADORES -->
+  <div class="main-grid">
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon icon-blue">📈</div>
+          Controle de demanda — consumo em tempo real
+        </div>
+        <span class="badge badge-blue">PILAR 01</span>
+      </div>
+      <div class="chart-legend">
+        <div class="legend-item">
+          <div class="legend-line" style="background: #63b3ed;"></div>
+          Consumo (kW)
+        </div>
+        <div class="legend-item">
+          <div class="legend-line" style="background: #fc8181; border-top: 2px dashed #fc8181; height: 0;"></div>
+          Limite IA (180 kW)
+        </div>
+        <div class="legend-item">
+          <div class="legend-line" style="background: #38ef7d;"></div>
+          Pós-limitação
+        </div>
+      </div>
+      <div style="position: relative; width: 100%; height: 220px;">
+        <canvas id="demandChart" role="img" aria-label="Gráfico de consumo de energia em tempo real com linha de limite de demanda da IA">Consumo de energia ao longo do tempo com limite inteligente de 180 kW.</canvas>
+      </div>
+      <div style="display: flex; gap: 12px; margin-top: 1rem;">
+        <div class="progress-wrap" style="flex:1; margin-bottom:0;">
+          <div class="progress-label"><span>Uso da capacidade</span><span class="progress-val" id="cap-pct">74%</span></div>
+          <div class="progress-bar"><div class="progress-fill fill-blue" id="cap-bar" style="width:74%;"></div></div>
+        </div>
+        <div class="progress-wrap" style="flex:1; margin-bottom:0;">
+          <div class="progress-label"><span>Eficiência energética</span><span class="progress-val" id="eff-pct">91%</span></div>
+          <div class="progress-bar"><div class="progress-fill fill-green" id="eff-bar" style="width:91%;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon icon-green">🔌</div>
+          Status dos carregadores
+        </div>
+        <span class="badge badge-green">8 unidades</span>
+      </div>
+      <div id="charger-list"></div>
+    </div>
+
+  </div>
+
+  <!-- LINHA INFERIOR -->
+  <div class="bottom-grid">
+
+    <!-- IA -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon icon-blue">🤖</div>
+          IA — decisões automáticas
+        </div>
+        <span class="badge badge-blue">PILAR 04</span>
+      </div>
+      <div id="ai-log"></div>
+    </div>
+
+    <!-- TARIFAÇÃO -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon icon-yellow">💳</div>
+          Tarifação e pagamentos
+        </div>
+        <span class="badge badge-yellow">PILAR 02</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>Tarifa pico (18h–21h)</span><span class="progress-val">R$ 1,85/kWh</span></div>
+        <div class="progress-bar"><div class="progress-fill fill-yellow" style="width:85%;"></div></div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>Tarifa normal</span><span class="progress-val">R$ 1,40/kWh</span></div>
+        <div class="progress-bar"><div class="progress-fill fill-blue" style="width:65%;"></div></div>
+      </div>
+      <div class="progress-wrap" style="margin-bottom: 1rem;">
+        <div class="progress-label"><span>Tarifa off-peak</span><span class="progress-val">R$ 0,95/kWh</span></div>
+        <div class="progress-bar"><div class="progress-fill fill-green" style="width:44%;"></div></div>
+      </div>
+      <div style="font-size: 11px; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.8px;">Últimas transações</div>
+      <div id="tx-list"></div>
+    </div>
+
+    <!-- PROTOCOLOS -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-icon icon-green">🔗</div>
+          Interoperabilidade (OCPP)
+        </div>
+        <span class="badge badge-green">PILAR 03</span>
+      </div>
+      <div id="proto-list"></div>
+      <div style="margin-top: 1rem;">
+        <div class="demand-ring-wrap">
+          <div class="ring-container">
+            <svg class="ring-svg" width="130" height="130" viewBox="0 0 130 130">
+              <circle cx="65" cy="65" r="52" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="10"/>
+              <circle cx="65" cy="65" r="52" fill="none" stroke="#38ef7d" stroke-width="10"
+                stroke-dasharray="327" stroke-dashoffset="33" stroke-linecap="round"/>
+            </svg>
+            <div class="ring-center">
+              <div class="ring-pct">90%</div>
+              <div class="ring-label">compatível</div>
+            </div>
+          </div>
+          <div style="font-size: 12px; color: var(--muted); text-align: center; line-height: 1.6;">
+            7 de 8 carregadores<br>comunicando via OCPP 2.0.1
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  ChargeGrid Intelligence · GoodWe Challenge Sprint 2 · Prova de Conceito © 2025
+</footer>
+
+<script>
+// ── DADOS ──────────────────────────────────────────────
+const chargers = [
+  { id: 'CG-01', model: 'GoodWe SC-22', status: 'charging', kw: 22 },
+  { id: 'CG-02', model: 'WEG EVCharger', status: 'charging', kw: 11 },
+  { id: 'CG-03', model: 'GoodWe SC-22', status: 'available', kw: 0 },
+  { id: 'CG-04', model: 'GoodWe SC-50', status: 'charging', kw: 50 },
+  { id: 'CG-05', model: 'ABB Terra AC', status: 'charging', kw: 22 },
+  { id: 'CG-06', model: 'WEG EVCharger', status: 'throttled', kw: 7 },
+  { id: 'CG-07', model: 'ABB Terra AC', status: 'available', kw: 0 },
+  { id: 'CG-08', model: 'GoodWe SC-50', status: 'charging', kw: 36 },
+];
+
+const statusMap = {
+  charging:  { dot: 'dot-charging',  cls: 'status-charging',  label: 'Carregando' },
+  available: { dot: 'dot-available', cls: 'status-available', label: 'Disponível' },
+  throttled: { dot: 'dot-throttled', cls: 'status-throttled', label: 'Limitado IA' },
+  fault:     { dot: 'dot-fault',     cls: 'status-fault',     label: 'Falha' },
+};
+
+const aiMessages = [
+  { color: '#38ef7d', icon: '⚡', msg: 'CG-06 limitado a 7 kW — pico de demanda detectado (176 kW).' },
+  { color: '#63b3ed', icon: '📊', msg: 'Consumo previsto +18% em 12 min. Redistribuindo carga entre CG-04 e CG-08.' },
+  { color: '#38ef7d', icon: '🕐', msg: 'Tarifa off-peak ativa às 22h. Agendando cargas programadas.' },
+  { color: '#f6c90e', icon: '⚠️', msg: 'Demanda se aproximando de 180 kW. Priorizando veículos com SoC abaixo de 40%.' },
+  { color: '#63b3ed', icon: '🔗', msg: 'CG-03 reconectado via OCPP 2.0.1 após queda de rede.' },
+  { color: '#38ef7d', icon: '💡', msg: 'Eficiência energética: 91%. Redução de 14% vs. sistema sem IA.' },
+];
+let aiIdx = 0;
+
+const txTemplates = [
+  { id: 'CG-04', kwh: '10,0 kWh', value: 'R$ 18,50', method: 'Pix' },
+  { id: 'CG-01', kwh: '15,0 kWh', value: 'R$ 27,75', method: 'Cartão' },
+  { id: 'CG-08', kwh: '5,0 kWh',  value: 'R$  9,25', method: 'App' },
+  { id: 'CG-05', kwh: '20,0 kWh', value: 'R$ 37,00', method: 'Pix' },
+  { id: 'CG-02', kwh: '8,0 kWh',  value: 'R$ 14,80', method: 'QR Code' },
+];
+let txIdx = 0;
+
+const protocols = [
+  { name: 'OCPP 2.0.1', status: 'online',   devices: 8,  badge: 'badge-green' },
+  { name: 'ISO 15118',  status: 'online',   devices: 4,  badge: 'badge-green' },
+  { name: 'OCPI 2.2',   status: 'online',   devices: 2,  badge: 'badge-blue'  },
+  { name: 'Modbus TCP', status: 'standby',  devices: 8,  badge: 'badge-yellow' },
+];
+
+// ── RELÓGIO ────────────────────────────────────────────
+function updateClock() {
+  document.getElementById('clock').textContent =
+    new Date().toLocaleString('pt-BR', { hour:'2-digit', minute:'2-digit', second:'2-digit', day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+// ── CARREGADORES ───────────────────────────────────────
+function renderChargers() {
+  document.getElementById('charger-list').innerHTML = chargers.map(c => {
+    const s = statusMap[c.status];
+    return `<div class="charger-item">
+      <div class="status-dot ${s.dot}"></div>
+      <div class="charger-id">${c.id}</div>
+      <div class="charger-model">${c.model}</div>
+      <div class="charger-kw">${c.kw > 0 ? c.kw + ' kW' : '—'}</div>
+      <div class="charger-status ${s.cls}">${s.label}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── PROTOCOLOS ─────────────────────────────────────────
+function renderProtocols() {
+  document.getElementById('proto-list').innerHTML = protocols.map(p => `
+    <div class="proto-item">
+      <div class="status-dot ${p.status === 'online' ? 'dot-charging' : 'dot-throttled'}"></div>
+      <div class="proto-name">${p.name}</div>
+      <div class="proto-devices">${p.devices} dispositivos</div>
+      <span class="badge ${p.badge}">${p.status}</span>
+    </div>
+  `).join('');
+}
+
+// ── LOG DA IA ──────────────────────────────────────────
+function pushAILog() {
+  const el = document.getElementById('ai-log');
+  const m = aiMessages[aiIdx % aiMessages.length];
+  const time = new Date().toLocaleTimeString('pt-BR');
+  const div = document.createElement('div');
+  div.className = 'ai-entry';
+  div.innerHTML = `
+    <div style="font-size:16px; flex-shrink:0; margin-top:1px;">${m.icon}</div>
+    <div>
+      <div class="ai-time">${time}</div>
+      <div class="ai-msg">${m.msg}</div>
+    </div>`;
+  el.insertBefore(div, el.firstChild);
+  while (el.children.length > 4) el.removeChild(el.lastChild);
+  aiIdx++;
+}
+
+// ── TRANSAÇÕES ─────────────────────────────────────────
+function pushTransaction() {
+  const el = document.getElementById('tx-list');
+  const tx = txTemplates[txIdx % txTemplates.length];
+  const time = new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+  const div = document.createElement('div');
+  div.className = 'tx-item';
+  div.innerHTML = `
+    <div>
+      <div class="tx-id">${tx.id}</div>
+      <div class="tx-detail">${tx.kwh} · ${time}</div>
+    </div>
+    <div>
+      <div class="tx-value">${tx.value}</div>
+      <div class="tx-method">${tx.method}</div>
+    </div>`;
+  el.insertBefore(div, el.firstChild);
+  while (el.children.length > 4) el.removeChild(el.lastChild);
+  txIdx++;
+  // atualiza receita
+  const cur = parseInt(document.getElementById('m-rev').textContent.replace(/\D/g,''));
+  document.getElementById('m-rev').textContent = 'R$ ' + (cur + Math.round(5 + Math.random() * 20));
+}
+
+// ── GRÁFICO DE DEMANDA ────────────────────────────────
+const labels = [];
+const dataKW = [];
+const dataLimit = [];
+for (let i = 14; i >= 0; i--) {
+  const t = new Date(Date.now() - i * 5000);
+  labels.push(t.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }));
+  dataKW.push(Math.round(120 + Math.random() * 55));
+  dataLimit.push(180);
+}
+
+let chart;
+function initChart() {
+  chart = new Chart(document.getElementById('demandChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Consumo (kW)',
+          data: dataKW,
+          borderColor: '#63b3ed',
+          backgroundColor: 'rgba(99,179,237,0.07)',
+          fill: true,
+          tension: 0.45,
+          pointRadius: 0,
+          borderWidth: 2,
+        },
+        {
+          label: 'Limite IA',
+          data: dataLimit,
+          borderColor: '#fc8181',
+          borderDash: [6, 4],
+          pointRadius: 0,
+          borderWidth: 1.5,
+          fill: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 300 },
+      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
+      scales: {
+        x: { display: false },
+        y: {
+          min: 80, max: 210,
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#64748b', font: { size: 11, family: 'Space Mono' }, callback: v => v + ' kW' },
+        }
+      }
+    }
+  });
+}
+
+function updateChart() {
+  const t = new Date();
+  const newKW = Math.round(120 + Math.random() * 55);
+  chart.data.labels.push(t.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', second:'2-digit' }));
+  chart.data.datasets[0].data.push(newKW);
+  chart.data.datasets[1].data.push(180);
+  if (chart.data.labels.length > 18) {
+    chart.data.labels.shift();
+    chart.data.datasets[0].data.shift();
+    chart.data.datasets[1].data.shift();
+  }
+  chart.update('none');
+
+  // atualiza métricas
+  const pct = Math.round((newKW / 200) * 100);
+  document.getElementById('m-kw').textContent = newKW + ' kW';
+  document.getElementById('cap-pct').textContent = pct + '%';
+  document.getElementById('cap-bar').style.width = pct + '%';
+}
+
+// ── INIT ───────────────────────────────────────────────
+renderChargers();
+renderProtocols();
+pushAILog();
+pushTransaction();
+updateClock();
+
+setTimeout(() => {
+  initChart();
+  setInterval(updateClock, 1000);
+  setInterval(updateChart, 4000);
+  setInterval(pushAILog, 9000);
+  setInterval(pushTransaction, 14000);
+}, 200);
+</script>
+</body>
+</html>
